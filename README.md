@@ -1,23 +1,27 @@
-# Super Mario Bros. Movie – Dutch Dub
+# Super Mario Bros. Movie – Dutch Dub (Original Quality)
 
-This repository contains a GitHub Actions workflow to automatically download the 1080p Blu-ray of *The Super Mario Bros. Movie* (2023), replace the audio with the Dutch dub, and produce a playable file.
+This repository contains a GitHub Actions workflow that creates a **true original-quality** version of *The Super Mario Bros. Movie* (2023) with the Dutch audio track perfectly synced.
 
-## Why not full original quality on Catbox?
+## What it does
 
-- **Catbox.moe** permanent uploads are limited to **200 MB**.
-- The original 1080p HEVC + Dutch audio is ~2.3 GB.
-- Therefore the workflow produces a high-quality re-encoded 1080p version that stays under practical limits (or a 720p version for permanent Catbox).
+- Downloads the original 1080p UHD BluRay (HEVC)
+- Replaces the audio with the Dutch dub (`Dutch.mp3`)
+- Keeps the **exact original video stream** (`-c:v copy`) → no quality loss
+- Uploads the finished ~2.3 GB file to **Gofile.io** and also keeps it as a GitHub artifact
+
+The Dutch audio is fully synced because both the video and audio streams start at timestamp 0 and their durations match very closely.
 
 ## How to use
 
-1. Put `Dutch.mp3` in the root of this repository (or change the path in the workflow).
+1. Add `Dutch.mp3` to the **root** of this repository (one-time step).
 2. Go to the **Actions** tab → select **Sync Dutch Dub** → **Run workflow**.
-3. When finished, download the artifact.
-
-You can also edit the workflow to upload the result to Litterbox (temporary, up to 1 GB) if you prefer a direct link.
+3. Wait for it to finish (can take 30–90 minutes depending on download speed).
+4. In the job logs, look for the green success message with the Gofile link (`https://gofile.io/d/xxxxxxxx`).
+5. You can also download the file from the Artifacts section as a backup.
 
 ## Notes
 
-- The original video source is the Pahe.in 1080p UHD BluRay release.
-- Audio is the provided Dutch dub (stereo).
-- The workflow frees disk space first so the large download fits on the runner.
+- Original video source: Pahe.in 1080p UHD BluRay release.
+- Audio: Dutch dub (stereo).
+- Output container: MP4 (HEVC video + AAC audio) for maximum compatibility.
+- Free Gofile links can expire if the file is not downloaded for a long time. Download it soon after the run finishes.

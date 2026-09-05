@@ -6,7 +6,7 @@ on:
 jobs:
   mux:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       - name: Checkout
@@ -31,29 +31,62 @@ jobs:
       - name: Download original video
         run: |
           echo "Downloading ~2.5 GB video..."
-          curl -L --retry 10 --retry-delay 20 \
+          curl -L --retry 15 --retry-delay 20 \
             -o video.mkv \
             "https://pixeldrain.com/api/file/H7NueesD?download"
           ls -lh video.mkv
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 video.mkv
 
-      - name: Mux Dutch audio (high quality 1080p re-encode)
+      - name: Mux Dutch audio (true original quality - HEVC copy)
         run: |
-          # Target ~800-900 MB so it can be uploaded to Litterbox (1 GB limit)
+          # -c:v copy keeps the exact original video stream
+          # Dutch audio is mapped in and re-encoded only for compatibility (AAC)
+          # Timing is preserved because both streams start at t=0 and durations match closely
           ffmpeg -hide_banner -i video.mkv -i Dutch.mp3 \
             -map 0:v:0 -map 1:a:0 \
-            -c:v libx264 -crf 22 -preset medium -threads 4 \
-            -c:a aac -b:a 160k \
-            -pix_fmt yuv420p \
+            -c:v copy \
+            -c:a aac -b:a 192k \
             -movflags +faststart \
-            SuperMarioBros_Dutch_Dub_1080p.mp4
+            SuperMarioBros_Dutch_Dub_Original.mp4
 
           rm -f video.mkv
-          ls -lh SuperMarioBros_Dutch_Dub_1080p.mp4
+          ls -lh SuperMarioBros_Dutch_Dub_Original.mp4
+          ffprobe -hide_banner -i SuperMarioBros_Dutch_Dub_Original.mp4 2>&1 | head -30
 
-      - name: Upload artifact
+      - name: Upload to Gofile
+        id: gofile
+        run: |
+          echo "Uploading to Gofile (this can take a while for ~2.3 GB)..."
+          RESPONSE=$(curl -s -X POST https://upload.gofile.io/uploadfile \
+            -F "file=@SuperMarioBros_Dutch_Dub_Original.mp4")
+
+          echo "$RESPONSE"
+
+          # Extract download page URL
+          DOWNLOAD_PAGE=$(echo "$RESPONSE" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          if data.get('status') == 'ok':
+              print(data['data'].get('downloadPage', ''))
+          else:
+              print('')
+          ")
+
+          if [ -z "$DOWNLOAD_PAGE" ]; then
+            echo "Gofile upload failed or unexpected response"
+            exit 1
+          fi
+
+          echo "========================================"
+          echo "✅ SUCCESS! Dutch-dubbed file is ready:"
+          echo "$DOWNLOAD_PAGE"
+          echo "========================================"
+          echo "download_page=$DOWNLOAD_PAGE" >> $GITHUB_OUTPUT
+
+      - name: Also keep as GitHub artifact (backup)
         uses: actions/upload-artifact@v4
         with:
-          name: SuperMarioBros-Dutch-Dub-1080p
-          path: SuperMarioBros_Dutch_Dub_1080p.mp4
-          retention-days: 7
+          name: SuperMarioBros-Dutch-Dub-Original
+          path: SuperMarioBros_Dutch_Dub_Original.mp4
+          retention-days: 3
           compression-level: 0
