@@ -1,0 +1,59 @@
+name: Sync Dutch Dub
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Download original video
+        run: |
+          echo "Downloading ~2.5 GB video..."
+          curl -L --retry 10 --retry-delay 20 \
+            -o video.mkv \
+            "https://pixeldrain.com/api/file/H7NueesD?download"
+          ls -lh video.mkv
+
+      - name: Mux Dutch audio (high quality 1080p re-encode)
+        run: |
+          # Target ~800-900 MB so it can be uploaded to Litterbox (1 GB limit)
+          ffmpeg -hide_banner -i video.mkv -i Dutch.mp3 \
+            -map 0:v:0 -map 1:a:0 \
+            -c:v libx264 -crf 22 -preset medium -threads 4 \
+            -c:a aac -b:a 160k \
+            -pix_fmt yuv420p \
+            -movflags +faststart \
+            SuperMarioBros_Dutch_Dub_1080p.mp4
+
+          rm -f video.mkv
+          ls -lh SuperMarioBros_Dutch_Dub_1080p.mp4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperMarioBros-Dutch-Dub-1080p
+          path: SuperMarioBros_Dutch_Dub_1080p.mp4
+          retention-days: 7
+          compression-level: 0
