@@ -28,6 +28,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
+      - name: Download Dutch audio
+        run: |
+          echo "Downloading Dutch.mp3..."
+          curl -L --retry 10 --retry-delay 10 \
+            -o Dutch.mp3 \
+            "https://files.catbox.moe/fs513r.mp3"
+          ls -lh Dutch.mp3
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 Dutch.mp3
+
       - name: Download original video
         run: |
           echo "Downloading ~2.5 GB video..."
@@ -40,8 +49,7 @@ jobs:
       - name: Mux Dutch audio (true original quality - HEVC copy)
         run: |
           # -c:v copy keeps the exact original video stream
-          # Dutch audio is mapped in and re-encoded only for compatibility (AAC)
-          # Timing is preserved because both streams start at t=0 and durations match closely
+          # Dutch audio is mapped in cleanly so timestamps start together
           ffmpeg -hide_banner -i video.mkv -i Dutch.mp3 \
             -map 0:v:0 -map 1:a:0 \
             -c:v copy \
@@ -49,9 +57,9 @@ jobs:
             -movflags +faststart \
             SuperMarioBros_Dutch_Dub_Original.mp4
 
-          rm -f video.mkv
+          rm -f video.mkv Dutch.mp3
           ls -lh SuperMarioBros_Dutch_Dub_Original.mp4
-          ffprobe -hide_banner -i SuperMarioBros_Dutch_Dub_Original.mp4 2>&1 | head -30
+          ffprobe -hide_banner -i SuperMarioBros_Dutch_Dub_Original.mp4 2>&1 | head -25
 
       - name: Upload to Gofile
         id: gofile
@@ -62,7 +70,6 @@ jobs:
 
           echo "$RESPONSE"
 
-          # Extract download page URL
           DOWNLOAD_PAGE=$(echo "$RESPONSE" | python3 -c "
           import sys, json
           data = json.load(sys.stdin)
@@ -78,7 +85,7 @@ jobs:
           fi
 
           echo "========================================"
-          echo "✅ SUCCESS! Dutch-dubbed file is ready:"
+          echo "SUCCESS! Dutch-dubbed file is ready:"
           echo "$DOWNLOAD_PAGE"
           echo "========================================"
           echo "download_page=$DOWNLOAD_PAGE" >> $GITHUB_OUTPUT
